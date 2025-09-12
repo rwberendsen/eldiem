@@ -207,10 +207,21 @@ such as previously allowed values that are no longer allowed, or, numerical
 measures that have a lower precision, these teams have to make hard choices
 what to do with historical data. For example, truncate historical numerical
 values? Round them? Or present different reports for time periods where the
-historical schema was used? Arguably, when rows are updated in such tables,
-the schema of the data last used to perform this update carries most weight.
-Such tables, too, may have columns that are no longer in use. So, still, the
-distinction between the table of the data store and the data itself has value.
+historical schema was used? Arguably, when rows are updated in such tables, the
+schema of the data last used to perform this update carries most weight.
+Still, it may have value to actually maintain a list of schema versions used by
+each update. Note the the YAML format we propose in this document does not
+prescribe such behaviour or provide any implementation help for it. We merely
+sketch how managing machine- and human readable logical data model schemas
+centrally could help developers all over the enterprise to build more robust,
+resilient, and correct pipelines and applications.  Such stateful tables, too,
+may have columns that are no longer in use. So, still, the distinction between
+the table of the data store and the data itself has value. 
+
+When it comes time to expose data to downstream consumers such as data kubes,
+data virtualisation platforms, or, more commonly, data visualisation tools, 
+there is still value in calling out a current schema for that interface; which
+may differ from the schema of the physical table(s) holding the data.
 
 ## Logical vs physical data model catalogs
 
@@ -424,6 +435,23 @@ As noted, projects like Iceberg, Hudi, and Delta Lake represent vast innovation
 efforts in the analytics space. How can we relate them to the definitions and
 ideas expressed above?
 
+Note that our proposal here of managing logical data models in a LDM language
+expressed in YAML is a bit further away from real data processing engines and
+storage layers than these technologies. We propose that engines or rather even
+applications built on top of compute platforms could be aware of logical data
+models, and use that metadata to inform how to manage physical tables. Iceberg,
+Delta tables, and Hudi are far more and deeper integrated with actual compute
+platforms and storage layers themselves. An application would use Iceberg or
+Delta tables or Hudi tables, and use APIs exposed by these respective technologies to
+manipulate them. In contrast, applications that know how to consume YAML files
+with logical data models may still use Iceberg, Delta tables, or Hudi tables,
+or PostgresDB tables, or MSSQL Server tables, or CSV files, or JSON files. And
+the application would be responsible for using the respective APIs still to 
+actually manipulate schemas of physical objects. The question is more: given the
+advanced capabilities of schema evolution of modern analytics compute frameworks
+such as Iceberg, Hudi, and Delta tables, is there still a need for overarching
+schema managment of logical data models?
+
 ### Iceberg
 
 Iceberg tables come with advanced concepts and with deep integrations with a
@@ -475,3 +503,17 @@ back to life a deleted column is allowed, then, a query using it would also brin
 back historical data for that column, from previous life cycles. This would be
 possible because the data would have the same type (possiblly demoted or promoted,
 but still).
+
+### Delta tables
+
+Delta tables also come with ACID properties for concurrent read and write operations
+on individual tables. A transation log keeps track of updates to a table, and rich
+metadata is provided out of the box, much like it is the case with Iceberg tables.
+
+Schema evolution of delta tables is perhaps a bit more tradtional, when data used
+to perform inserts or upserts has a new schema, Spark exposes APIs to change the
+schema of the update table on the fly, supporting limited options like adding new
+columns or perhaps promoting the type of existing columns to allow a broader set
+of values. Deleting columns, or reordering them would require issuing ALTER TABLE
+statements.
+
