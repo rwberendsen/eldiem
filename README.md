@@ -159,6 +159,59 @@ necessary step for still being able to correctly interpret a data point years
 after the fact.  Unfortunately, this simple requirement is already like a holy
 grail in the data world. 
 
+## Schema of events vs schema of state
+
+Another fundamental difference in engineering, which plays a crucial role in
+event driven architectures, is the the schema of events, versus the schema of
+state. As a very simple example, an event might be a transaction where an amount
+of money, say 100 euros, is transferred from bank account A to bank account B.
+If the transaction is accepted, an event is created, and it may log this exact
+information. However, how to decide whether or not to accept the transaction? For
+this, an application needs state. For example, the current balance of account A,
+and the minimum balance allowed at the moment. The value of the information in
+the event is therefore very closely intertwined with having available the exact
+state at the time the event was accepted (committed). In an ideal world, having
+an append-only and error-free log of committed events would allow downstream
+teams to reconstruct exactly the state at each moment in history, without error.
+In practice, however, things can get quite complicated. Bring in distributed
+systems, and eventual consistency, and you get the idea. 
+
+In many enterprises, event driven architectures may not yet dominate the game.
+And in many analytics teams, primarily, state is what is being transferred. In
+the bank account example, we'd get the balance of accounts. Perhaps we'd only
+get balances of accounts that had been modified since we last pulled data. We
+are getting data from sources that update their rows when events happen. And,
+downstream, we may end up updating rows in tables as well.
+
+How does this work, then, if between the time a row was created, and between
+the time a row is updated, the schema of incoming data has changed? What schema
+should we say a row like this was produced with?
+
+In cases like this, many times incoming complete rows, complete with state
+information, are often referred to as events. Or maybe events carrying state
+information. So, an event of a transaction may include information about the
+state of both accounts at the time of the event, and any applicable limits at
+the time, so that all information used when the event was produced is carried
+over in the event data. Or a record comes in from the account table, and we get
+only changed records, and for these records we get the balance before and also
+after the update, with some info on the last transaction. And in a staging area
+of our analytics domain, we can in fact store such incoming records in an
+append-only fashion, allowing us to replay these updates after the fact at
+will, if we messed up something in downstream tables where we are updating
+state.
+
+And what about these downstream tables? The schema in there really is owned by
+data teams responsible for transformations, computation of KPIs, and analytics
+business logic. If upstream staging tables have seen forward compatible changes
+such as previously allowed values that are no longer allowed, or, numerical
+measures that have a lower precision, these teams have to make hard choices
+what to do with historical data. For example, truncate historical numerical
+values? Round them? Or present different reports for time periods where the
+historical schema was used? Arguably, when rows are updated in such tables,
+the schema of the data last used to perform this update carries most weight.
+Such tables, too, may have columns that are no longer in use. So, still, the
+distinction between the table of the data store and the data itself has value.
+
 ## Logical vs physical data model catalogs
 
 The distinction between the logical data model schema version that the data was
@@ -364,3 +417,61 @@ then first of all we need an API for these processes, and second we need ways
 to prevent conflicts and inconsistent data. Another option could be to use
 GitOps ideas and require merge request reviews for every change; blocking
 pipelines potentially, and risking data loss.
+
+## Related work
+
+As noted, projects like Iceberg, Hudi, and Delta Lake represent vast innovation
+efforts in the analytics space. How can we relate them to the definitions and
+ideas expressed above?
+
+### Iceberg
+
+Iceberg tables come with advanced concepts and with deep integrations with a
+wide variety of compute engines. Their scope far exceeds managing schemas of
+tables. Indeed, the aims of Iceberg tables include bringing ACID properties to
+table updates when tables are stored as files (e.g., Parquet or ORC) on
+distributed file storage. ACID properties are limited to individual tables, however,
+unlike transactions in more traditional RDBMSes like PostgresDB, where serializable
+isolation between transactions can span many statements manipulating many tables. 
+
+Iceberg is well suited for compute platforms that separate storage from
+compute, such as Spark, but also Snowflake. The Iceberg spec details a very
+rich metadata format for rows, partitions, tables, snapshots, and so on.
+Compute engines like Spark have developed Iceberg compatible libraries that use
+Iceberg metadata for essential activities such as creating query plans. Also,
+they can use Iceberg catalogs to manage metadata of tables.
+
+Iceberg comes with a rich set of data types, and normative mappings between
+that type system and type systems used in Parquet, ORC, JSON, etcetera.
+
+Iceberg tables support evolution, and the exact operations supported are
+carefully defined such that existing data can never be destroyed. In fact, only
+backward compatible schema changes are allowed. The reason is that the schema
+that is being evolved is indeed the schema of the table holding the data. It is
+the schema of the data store. By using the rich metadata stored even for each
+row, such as the commit snapshot id that last updated a row, we may be able
+to find the schema id and the schema definition of the table at the time that
+particular row was written. But Iceberg does not address managing the schema
+of the data that was written. So its scope is far wider than our proposal here
+on the one hand, on the other hand, it does not cover our proposal completely.
+Also, our proposal seems more technology agnostic, given the deep integrations
+between Iceberg and execution engines. This is not a good or a bad thing either
+way. These deep integrations are also a sign of the huge success of the Iceberg
+format.
+
+In our proposal above, we also allow forward compatible schema changes. However,
+this is because we are primarily interested in the schema of the data that is
+being inserted in a table; not in the schema of the containing table itself. 
+Of course, also in our proposal, physical table schemas can only be updated in
+a non-destructive manner. One small difference between Iceberg and our proposal
+here is that we would not allow re-using a column name after it has been deleted;
+most definitely not when that new column has a different type. In Iceberg this
+is possible because internally, columns are identified by globally unique identifiers.
+But, consumers use column names when they query tables. If they refer to a re-used
+name, I can only imagine that it would be hard to retrieve historical data for
+previously existing columns that carried the same name. If in our proposal, a schema
+registry for a logical data model would be configured in such a way that bringing
+back to life a deleted column is allowed, then, a query using it would also bring
+back historical data for that column, from previous life cycles. This would be
+possible because the data would have the same type (possiblly demoted or promoted,
+but still).
