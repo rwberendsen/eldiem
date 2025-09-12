@@ -427,7 +427,29 @@ If we allow engines to fully automatically publish new logical data models,
 then first of all we need an API for these processes, and second we need ways
 to prevent conflicts and inconsistent data. Another option could be to use
 GitOps ideas and require merge request reviews for every change; blocking
-pipelines potentially, and risking data loss.
+pipelines potentially, and risking data loss. 
+
+The latter approsch would be the primarily
+envisioned way of working in the context of which the ideas presented here matured.
+A central (collection of) schema repository / repositories to govern integrations
+between APIs offered and managed by different teams; whether those APIs would
+be REST APIs or simply database views exposed over a JDBC connection; or file
+transfers for that matter. Where the idea would be that teams that expose the
+API / database objects / files are responsible for publishing the logical data
+model of the data they offer. Such a logical data model could then be used to
+attach metadata to relating to matters such as data classification, privacy,
+data ownership, production vs non-production status, and so on; it can be a 
+component in a wider governance framework, and it can be a component in a
+data-mesh way of working, for example. In such a context, we can imagine it
+as part of a standard process that if a data producer would want to do a schema
+change, they would first publish the new version of their logical data model
+centrally, giving consuming teams time to, for example, already prepare their
+underlying data stores (automatically), to be able to hold data of both the old
+and the new schema. After this, the consuming teams would still be writing data
+under the old schema in the altered data stores, until upstream teams actually begin
+publishing data with the new schema and consumers actually start consuming these
+APIs. This would allow for performing backward compatible schema changes without
+breaking pipelines. 
 
 ## Related work
 
