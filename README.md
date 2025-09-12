@@ -452,6 +452,16 @@ advanced capabilities of schema evolution of modern analytics compute frameworks
 such as Iceberg, Hudi, and Delta tables, is there still a need for overarching
 schema managment of logical data models?
 
+Also note that Iceberg, Hudi, and Delta do not actually offer declarative
+schema management. What they do offer is, at the cause of some operational risk,
+responsive, on-the-fly adaptation of existing schemas, in reaction to
+schema changes in upstream sources. In a way, this approach contrasts with the
+desire behind managing resources in a declarative way; the latter approach stems
+from a desire to oversee and govern and control the state of resources with
+confidence; whereas the former approach emphasizes a continuous flow of data
+and little human intervention, greater flexibility, perhaps at the cost of
+some control and governance.
+
 ### Iceberg
 
 Iceberg tables come with advanced concepts and with deep integrations with a
