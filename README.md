@@ -555,6 +555,19 @@ columns or perhaps promoting the type of existing columns to allow a broader set
 of values. Deleting columns, or reordering them would require issuing ALTER TABLE
 statements.
 
+### Data contracts
+
+Data contracts are an emerging topic to handle change management in transactional
+applications with regard to the impact of such changes in downstream data products.
+Sanderson et al have done considerable work on describing ways of working with data
+contracts, and also go into some detail on how an implementation of them might look.
+One component of a data contract would be a schema speficication, for which they
+recommend JSON schema. Work by Andrew Jones considers also Avro, and Protobuf, as 
+well as JSON schema. Indeed, this document is most closely related to work on data
+contracts, and much of the discussion, also in relation to technologies such as
+Iceberg and Delta Lake would apply to any approach one would take when working with
+data contracts.
+
 ## Discussion
 
 So what we propose here is a data format that is human and machine readable for
