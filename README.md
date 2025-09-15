@@ -351,6 +351,7 @@ concepts of collections and constraints.
 - Struct type, having named fields of any type
   - With required constraint on each field
   - Embedded structs, inspired by the Go programming language, to model composition
+  - A flag on how to treat unexpected fields: FAIL, IGNORE, STORE, more on this below
 - Union type, to model inheritance
   - With conditional type constraints, based on a sibling String field with allowed values set; e.g., if `event_type == 'OrderPlaced'` then `payload_type == 'Order'`. This can be used to model oneOf types as well, perhaps; maybe even anyOf, allOf from JSON schema; this is a very complicated area of JSON schema; the OpenAPI spec actually bolts inheritance onto JSON schema in a bad way; actually true inheritance is not expressible in JSON schema, this is a shortcoming of it.
 - Collection of scalar types
@@ -362,14 +363,16 @@ concepts of collections and constraints.
   - With ordered constraint (meaning elements should not be reordered, their order is significant).
   - With constraints on relations with other collections, such as relationship between fields in this struct to fields in other structs. This can be used to model things like foreign key constraints.
 
-And a flag indicating if the schema is to be used in a strict or a tolerant
-manner.  A strict manner would mean that the abscence of a field in a schema
-really means the field should not exist in incoming data. A tolerant manner
-would mean that data points containing other fields are to be accepted. Here
-there is still a distinction we could make: should such other fields also be
-stored? Or may they be ignored? Whether or not a schema is strict or
-tolerant may affect calculation of whether proposed schema changes would be
-backwards compatible and / or forward compatible or not.
+The flag indicating how unexepted fields in a struct are to be treated is related to the concepts of a tolerant reader which
+does not fail if unexpected fields are present and a strict reader that would fail in this case. Using the flag the publisher
+of the LDM can specify on the level of individual (nested) structs how readers are requested to behave:
+
+- FAIL: The publisher promises no unexpected fields will be there, if there are, readers should fail.
+- IGNORE: The publisher promises that while there may be unexepcted, additional fields, they should not be of interest to any downstream team, they carry
+no meaning related to any actual business process, and they can safely be ignored.  
+- STORE: The publisher requests readers to store unexpected fields, since these fields do carry information that may be needed downstream, but the schema
+cannot be known in advance, or it is impractical to specify it in advance. In this case, the publisher can never add new fields or rename existing fields, 
+because their names and / or types might conflict with fields that readers have already stored.
 
 With just these concepts, I believe we could express a lot, from the nested
 tables we can have in BigQuery, to documents in a document database, from JSON
