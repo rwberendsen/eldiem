@@ -487,6 +487,9 @@ confidence; whereas the former approach emphasizes a continuous flow of data
 and little human intervention, greater flexibility, perhaps at the cost of
 some control and governance.
 
+Closer to the current proposal would be work on data contracts, and work done
+at startups like Gable. 
+
 ### Iceberg
 
 Iceberg tables come with advanced concepts and with deep integrations with a
@@ -551,4 +554,38 @@ schema of the update table on the fly, supporting limited options like adding ne
 columns or perhaps promoting the type of existing columns to allow a broader set
 of values. Deleting columns, or reordering them would require issuing ALTER TABLE
 statements.
+
+## Discussion
+
+So what we propose here is a data format that is human and machine readable for
+capturing logical data models and schemas. This would organizations to start being
+more explict about data exchanged between teams. The easiest way of using it
+would be to have a human-in-the-loop when altering an LDM, and a simple git
+repository with a peer review process may be enough; but within data management
+frameworks other uses could be employed. The spec would also contain rules for
+evaluating exactly what would constitute allowed schema changes depending on
+if backward- and / or forward-compatibility was demanded for evolving an LDM.
+Probably implementations of these rules would also be developed, for a variety
+of programming languages; organisations would run these themselves, for example,
+they could be configured to run in response to creations of merge requests.
+
+Applications in the organization would then be able to use the LDM catalog to
+manage data pipelines and data stores. In the case where advanced platforms
+like Iceberg or Hudi or Delta Lake or Snowflake are used, which have their own
+catalogs, and which already allow semi-automatic schema changes, then still we
+maintain that an Icebberg catalog, for example, is a catalog of current schemas
+for physical data stores, despite the fact that Iceberg has its own set of data
+types, which map to data types of underlying storage formats, such as Parquet.
+We propose yet another layer of abstraction on top, and yet another type system
+that would facilitate logic to reason about what consitute back- and / or
+forward-compatible schema changes. Applications running on Iceberg would have
+to map these types onto Iceberg types. Such applications could, in response to
+new published version of LDMs, issue ALTER TABLE statements where needed on the
+underlying platform, allowing teams to manage schemas of data stores on any
+type of platform without requiring personal write access to production
+environments.  An important trade off is that making applications interact with
+a self-managed catalog of LDMs requires in-house software development. To ease
+this somewhat, SDKs for various programming languages can be developed to, for
+example, deserialize the schema for the latest version of an LDM based on the
+first version and all the modificatoins made to it in later versions.
 
