@@ -352,8 +352,8 @@ concepts of collections and constraints.
   - With required constraint on each field
   - Embedded structs, inspired by the Go programming language, to model composition
   - A flag on how to treat unexpected fields: FAIL, IGNORE, STORE, more on this below
-- Union type, to model inheritance
-  - With conditional type constraints, based on a sibling String field with allowed values set; e.g., if `event_type == 'OrderPlaced'` then `payload_type == 'Order'`. This can be used to model oneOf types as well, perhaps; maybe even anyOf, allOf from JSON schema; this is a very complicated area of JSON schema; the OpenAPI spec actually bolts inheritance onto JSON schema in a bad way; actually true inheritance is not expressible in JSON schema, this is a shortcoming of it.
+- OneOfStruct type, to model inheritance
+  - We require provably non-overlapping constraints on a set of fields that is present in all alternatives
 - Collection of scalar types
   - With uniqueness constraint (making the collection a SET (of scalars))
   - Note that even floats can be compared if we have defined tolerance)
@@ -384,6 +384,142 @@ should be related to a collection of structs with a unique key constraint; and
 the other way around when presented with a collection of structs in a logical
 data model, they have to decide to use a table or a map in the physical storage
 layer they happen to manage.
+
+## A sketch of a possible format for the schema language
+
+While we suggested YAML several times in this document, YAML, too, has its pros
+and cons.  It is a rather rich language, that actually was intended to contain
+data, much like JSON, which is simpler, and is considered a subset of YAML. Our
+business is mainly specifying data types. We may go for something more
+specialised. SQL itself comes to mind, the golden standard for data querying
+and processing in analytics: SQL style DDL statements. Or any statically
+compiled programming language, too, has syntax for specifying data types. 
+A recent and popular language developed by some of the smartest brains in computer
+science is Go. We can take inspiration from its syntax to define our schema
+language syntax.  Rust is another recent language, low-level, trusted to be used
+in the Linux kernel code base, and open source. Most likely, we will use Rust as a first
+choice to write a parser for our schema language. Still, we are free to use
+any style for our own schema language. Say we take inspiration from Go, then our format
+could like something like:
+
+```
+namespace: systems.ayvens.corp.eldiem/leasing/v1
+version: 1
+compatibility_mode: backward
+
+type contract struct{
+  id string !nil & maxLength = 24
+  customer_id string !nil & maxLength = 24
+  start_date date !nil
+  end_date 
+} end_date = nil | end_date > start_date
+
+type customer struct{
+  id string (
+      !nil
+    & maxLength = 24
+  )
+  customer_email string !nil & maxLength = 320
+}
+
+contracts [contract] uniqueKey([id]) & foreignKey([(customer_id, customer.id)])
+
+customers [customer] uniqueKey([id])
+```
+
+In this small sketch there are already quite a few things to digest. First,
+we start with a namespace. It follows the format common in namespaces of classes
+in Java, with reversed domain names. Then follows a slash, which you can further
+use to group names and types together. Later we will see that also names can have
+path elements in them, which you can use as a further hint for how teams may group
+names together, in case you have large logical data models. Note also that we
+use a v1 in the namespace here. It is just a naming convention we would recommend,
+but not required or enforced in any way, we'll get to the reason for this convention
+in a few paragraphs.
+
+A namespace corresponds to a single logical data model (LDM). It is the unit
+that you version. The first version is always 1. Whenever you evolve an LDM,
+you will bump this version number by 1.
+
+The compatibility mode specifies for this LDM how it may be evolved. This cannot
+be changed during the lifetime of the LDM. That means that the compatibility will
+always be transitive over multiple versions. Note that in no event a destructive
+schema evolution will be supported: this will require using a new namespace.
+And this is why it is useful to end your namespaces with an explicit version as 
+we did above. If you want to make a breaking change, but you still want to use
+a similar name, and logically replace your earlier leasing namespace, you can simply
+create an new namespace: 
+
+```
+namespace: systems.ayvens.corp.eldiem/leasing/v2
+```
+
+
+After the header, we get types and names. If its a type, it follows this grammar:
+
+```
+'type' type_name type_def
+```
+
+If it's a name, it follow this grammar:
+
+```
+name ( type_name | type_def )
+```
+
+With
+```
+type_definition: 
+    'string' [string_constraints]
+  | 'numeric' [numeric_constraints]
+  | 'bool' [bool_constraints]
+  | 'date' [date_constraints]
+  | struct_type_def [struct_type_constraints]
+  | one_of_struct_type_def
+  | list_of_scalars_type_def 
+  | list_of_structs_type_def [list_of_structs_constraints]
+  | list_of_list_type_def [list_of_list_constraints]
+  | map_type_def [map_constraints]
+```
+
+Now in the above grammar snippets, we again find a lot to unpack. Note how
+different types allow different types of constraints. We briefly touch upon
+some aspects.
+
+`list_of_scalars_type_def` omits optional constraints because it will be
+further expanded to different types of scalars in order to allow appropriate
+constraint expressions depending on the scalar type that is used.
+
+`one_of_struct_type_def` would have constraints embedded too, 
+as we can most easily show with an example first:
+
+```
+type order struct {
+  order_id string !nil
+  offer_id string !nil
+}
+
+type event struct {
+  event_id string !nil
+  event_type string allowed(["OrderPlaced", "ContractSigned"])
+  payload oneOf [
+    orderPlacedEvent event_type = "OrderPlaced",
+    contractSignedEvent event_type = "ContractSigned"
+  ] 
+}
+```
+
+Here we see that the constraints on the list of alternatives are
+indeed mutually exclusive, or disjoint. By making this a requirement
+we can make oneOf truly oneOf. Is there a good use case for JSON schema
+it's anyOf and allOf features? If we come across one, we can expand our
+format.
+
+Now, what happens when we want to evolve a model? In analytics, tables can
+easily have hundreds of columns. We don't want to rewrite our entire LDM
+if all we need to do is change the size of a column. For that reason, we need
+our schema language to support manipulations.
+
 
 ## Schema repositories
 
