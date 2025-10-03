@@ -468,7 +468,7 @@ name ( type_name | type_def )
 
 With
 ```
-type_definition: 
+type_def: 
     'string' [string_constraints]
   | 'numeric' [numeric_constraints]
   | 'bool' [bool_constraints]
