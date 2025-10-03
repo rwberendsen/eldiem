@@ -511,7 +511,8 @@ type event struct {
 Here we see that the constraints on the list of alternatives are
 indeed mutually exclusive, disjoint. By making this a requirement
 we can ensure that a validation process that is using this LDM to validate
-an instance will . Is there a good use case for JSON schema
+an instance will be able to determine the intended schema of the instance
+that it is validating. Is there a good use case for JSON schema
 it's anyOf and allOf features? If we come across one, we can expand our
 format.
 
