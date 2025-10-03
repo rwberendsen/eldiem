@@ -422,7 +422,7 @@ type customer struct{
   customer_email string !nil & maxLength = 320
 }
 
-contracts [contract] uniqueKey([id]) & foreignKey([(customer_id, customer.id)])
+contracts [contract] uniqueKey([id]) & foreignKey([(customer_id, customers.id)])
 
 customers [customer] uniqueKey([id])
 ```
@@ -453,7 +453,6 @@ create an new namespace:
 ```
 namespace: com.example.corp.eldiem/line_of_business/v2
 ```
-
 
 After the header, we get types and names. If its a type, it follows this grammar:
 
@@ -529,7 +528,7 @@ create {
 }
 
 update {
-  type customer.id string !nil & maxLength = 48
+  type customer.id string !nil & maxLength = 48 // backward compatible change
 }
 
 delete {
@@ -539,16 +538,69 @@ delete {
 Finally, we can shadow another LDM:
 
 ```
-namespace: com.example.corp.eldiem/data_team/line_of_business/v1
+namespace: com.example.corp.eldiem/dwh/staging/line_of_business/v1
 version: 1
 shadows: com.example.corp.eldiem/line_of_business/v1
+sourceVersion: 1
 
 create {
-  customer.load_date datetime !nil
-  contract.load_date datetime !nil
+  type customer.valid_from date !nil
+  type customer.valid_to date 
+  type customer.load_date datetime !nil
+
+  // same for contract type
+  // ...
+}
+
+update {
+  typeConstraint customer valid_to = nil | valid_from < valid_to
+  nameConstraint customers uniqueKey([id, valid_from])
+
+  // similar for contract type and contracts name
+  // ...
 }
 ```
-Shadows inherit compatibility mode.
+Shadows inherit compatibility mode from their source LDMs.
+
+Note how we use keywords like `type`, `typeConstraint` and `nameConstraint` to
+denote what we are changing exactly. Also note how we are using dot notation
+to traverse from the a struct type down to its field. In fact, this is an example
+of a  mini query language that can be used to identify even nested fields.
+We did see an earlier example that in our usage of a `foreignKey` constraint, 
+where we referenced the name `customers.id` to denote the `id` field of the struct
+`customer`. The full syntax for that reference would contain a splat expression:
+`customers.[*].id` meaning that we denote the id field of all the struct records
+in the customers list (table). When using the dot notation on a list of structs,
+the splat expression is the default.
+
+What happens if the source LDM issues a new version? Downstream, we publish
+a corresponding new version:
+
+```
+namespace: com.example.corp.eldiem/dwh/staging/line_of_business/v1
+version: 2
+sourceVersion: 2
+```
+
+This could mean a conflict, if the source modified a constraint that we
+modified also, for example: in such cases, implementations should not accept a
+file like this without modifications. In this case, we need to spell out
+create, update, and delete manipulations with regard to our own version 1.  But
+if there are no conflicts, the same create, update and delete actions that were
+done in the source LDM are implied here, too.
+
+And if we want to change our downstream model? Then we only bump our own version:
+
+```
+namespace: com.example.corp.eldiem/dwh/staging/line_of_business/v1
+version: 3
+sourceVersion: 2
+
+// ...
+```
+
+We specify the changes to our LDM with respect to version 2.
+
 
 ## Schema repositories
 
