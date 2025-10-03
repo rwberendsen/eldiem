@@ -534,7 +534,7 @@ update {
 
 delete {
 }
-``
+```
 
 Finally, we can shadow another LDM:
 
