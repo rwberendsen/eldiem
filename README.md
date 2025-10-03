@@ -510,16 +510,45 @@ type event struct {
 ```
 
 Here we see that the constraints on the list of alternatives are
-indeed mutually exclusive, or disjoint. By making this a requirement
-we can make oneOf truly oneOf. Is there a good use case for JSON schema
+indeed mutually exclusive, disjoint. By making this a requirement
+we can ensure that a validation process that is using this LDM to validate
+an instance will . Is there a good use case for JSON schema
 it's anyOf and allOf features? If we come across one, we can expand our
 format.
 
 Now, what happens when we want to evolve a model? In analytics, tables can
 easily have hundreds of columns. We don't want to rewrite our entire LDM
 if all we need to do is change the size of a column. For that reason, we need
-our schema language to support manipulations.
+our schema language to support manipulations. First, let's see an example.
 
+```
+namespace: com.example.corp.eldiem/line_of_business/v1
+version: 2
+
+create {
+}
+
+update {
+  type customer.id string !nil & maxLength = 48
+}
+
+delete {
+}
+``
+
+Finally, we can shadow another LDM:
+
+```
+namespace: com.example.corp.eldiem/data_team/line_of_business/v1
+version: 1
+shadows: com.example.corp.eldiem/line_of_business/v1
+
+create {
+  customer.load_date datetime !nil
+  contract.load_date datetime !nil
+}
+```
+Shadows inherit compatibility mode.
 
 ## Schema repositories
 
