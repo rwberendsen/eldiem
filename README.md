@@ -403,7 +403,7 @@ any style for our own schema language. Say we take inspiration from Go, then our
 could like something like:
 
 ```
-namespace: com.example.corp.eldiem/leasing/v1
+namespace: com.example.corp.eldiem/line_of_business/v1
 version: 1
 compatibility_mode: backward
 
@@ -447,11 +447,11 @@ always be transitive over multiple versions. Note that in no event a destructive
 schema evolution will be supported: this will require using a new namespace.
 And this is why it is useful to end your namespaces with an explicit version as 
 we did above. If you want to make a breaking change, but you still want to use
-a similar name, and logically replace your earlier leasing namespace, you can simply
+a similar name, and logically replace your earlier `line_of_business` namespace, you can simply
 create an new namespace: 
 
 ```
-namespace: com.example.corp.eldiem/leasing/v2
+namespace: com.example.corp.eldiem/line_of_business/v2
 ```
 
 
