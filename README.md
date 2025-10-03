@@ -529,7 +529,8 @@ create {
 }
 
 update {
-  type customer.id string !nil & maxLength = 48 // backward compatible change
+  type customer.id string !nil & maxLength = 36 // backward compatible change,
+                                                // we switched to UUIDs
 }
 
 delete {
