@@ -403,7 +403,7 @@ any style for our own schema language. Say we take inspiration from Go, then our
 could like something like:
 
 ```
-namespace: systems.ayvens.corp.eldiem/leasing/v1
+namespace: com.example.corp.eldiem/leasing/v1
 version: 1
 compatibility_mode: backward
 
@@ -451,7 +451,7 @@ a similar name, and logically replace your earlier leasing namespace, you can si
 create an new namespace: 
 
 ```
-namespace: systems.ayvens.corp.eldiem/leasing/v2
+namespace: com.example.corp.eldiem/leasing/v2
 ```
 
 
