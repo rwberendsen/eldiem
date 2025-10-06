@@ -408,18 +408,17 @@ version: 1
 compatibility_mode: backward
 
 type contract struct{
-  id string !nil & maxLength = 24
-  customer_id string !nil & maxLength = 24
+  id string(24) !nil 
+  customer_id string(24) !nil 
   start_date date !nil
-  end_date 
-} end_date = nil | end_date > start_date
+  end_date
+} end_date = nil | end_date > start_date // perhaps allowing arithmetic like this
+                                         // spanning multiple fields is too expressive
 
 type customer struct{
-  id string (
-      !nil
-    & maxLength = 24
+  id string(24) !nil
   )
-  customer_email string !nil & maxLength = 320
+  customer_email string(320) !nil 
 }
 
 contracts [contract] uniqueKey([id]) & foreignKey([(customer_id, customers.id)])
@@ -485,6 +484,21 @@ Now in the above grammar snippets, we again find a lot to unpack. Note how
 different types allow different types of constraints. We briefly touch upon
 some aspects.
 
+The allowed constraints depend on the type on which they apply. For most types,
+a !nil constraint is valid. For string types, the length of the string. For numeric
+types, greater than and smaller than operations are allowed. There are certain
+constraints for which it is possible to compute backward and forward compatibility
+between versions of this LDM. For example, !nil, when we treat nil as a value, allows
+less values with respect to omitting this constraint. Thus, removing a !nil constraint
+is a backwards compatible schema change. Similarly, a larger string length is a
+backwards compatible change. With integers, allowing smaller than and greater than
+operators as these: `age int nil | <300` allows more values than `<200` and is
+backwards compatible. If we would however start considering offering regular expressions
+to validate strings, then this becomes a lot harder. Computing whether one 
+finite state machine (FSA) accepts a subset of another FSA is PSPACE complete.
+We would therefore suggest at first to keep the list of constraints very small, 
+and not to allow too much expressive power.
+
 `list_of_scalars_type_def` omits optional constraints because it will be
 further expanded to different types of scalars in order to allow appropriate
 constraint expressions depending on the scalar type that is used.
@@ -529,8 +543,8 @@ create {
 }
 
 update {
-  type customer.id string !nil & maxLength = 36 // backward compatible change,
-                                                // we switched to UUIDs
+  type customer.id string(36) !nil // backward compatible change,
+                                   // we switched to UUIDs
 }
 
 delete {
