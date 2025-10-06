@@ -709,6 +709,14 @@ some control and governance.
 Closer to the current proposal would be work on data contracts, and work done
 at startups like Gable. 
 
+Other related work includes TypeSpec by Microsoft and Smithy by AWS. These
+projects avoid JSON schema, and provide custom schema languages specialised
+in specifying schema's. Note that JSON schema is not actually a language 
+to specify schema's, but rather, it is a language to define constraints on
+data instances. Over the years and spec version, JSON schema has grown into
+highly complex technology, and both Typespec and Smithy represent a deviation
+from JSON schema, much like the grammar we propose in this document is.
+
 ### Iceberg
 
 Iceberg tables come with advanced concepts and with deep integrations with a
