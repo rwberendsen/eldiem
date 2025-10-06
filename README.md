@@ -408,10 +408,12 @@ version: 1
 compatibility_mode: backward
 
 type contract struct{
-  id string(24) !nil 
-  customer_id string(24) !nil 
-  start_date date !nil
-  end_date
+  id string(24) 
+  customer_id string(24) 
+  start_date date 
+  ?end_date date
+  b2b bool = false // default value of false
+  contract_type string(3) = 'B2B' in(['B2B', 'B2C']) 
 } end_date = nil | end_date > start_date // perhaps allowing arithmetic like this
                                          // spanning multiple fields is too expressive
 
@@ -485,19 +487,33 @@ different types allow different types of constraints. We briefly touch upon
 some aspects.
 
 The allowed constraints depend on the type on which they apply. For most types,
-a !nil constraint is valid. For string types, the length of the string. For numeric
-types, greater than and smaller than operations are allowed. There are certain
-constraints for which it is possible to compute backward and forward compatibility
-between versions of this LDM. For example, !nil, when we treat nil as a value, allows
-less values with respect to omitting this constraint. Thus, removing a !nil constraint
-is a backwards compatible schema change. Similarly, a larger string length is a
-backwards compatible change. With integers, allowing smaller than and greater than
-operators as these: `age int nil | <300` allows more values than `<200` and is
-backwards compatible. If we would however start considering offering regular expressions
-to validate strings, then this becomes a lot harder. Computing whether one 
-finite state machine (FSA) accepts a subset of another FSA is PSPACE complete.
-We would therefore suggest at first to keep the list of constraints very small, 
-and not to allow too much expressive power.
+a !nil constraint is valid. For string types, the length of the string. For
+numeric types, greater than and smaller than operations are allowed. There are
+certain constraints for which it is possible to compute backward and forward
+compatibility between versions of this LDM. For example, !nil, when we treat
+nil as a value, allows less values with respect to omitting this constraint.
+Thus, removing a !nil constraint is a backwards compatible schema change.
+Similarly, a larger string length is a backwards compatible change. With
+integers, allowing smaller than and greater than operators as these: `age int
+nil | <300` allows more values than `<200` and is backwards compatible. If we
+would however start considering offering regular expressions to validate
+strings, then this becomes a lot harder. Computing whether one finite state
+machine (FSA) accepts a subset of another FSA is PSPACE complete.  We would
+therefore suggest at first to keep the list of constraints very small, and not
+to allow too much expressive power. JSON schema has been extended with a rich
+variety of formats, and also patterns, regular expressions are allowed. Eldiem
+would offer at first a much more sober set of constraints, but it would offer
+some well understood definitions of compatibility in return. Yes, better
+understood and formalized, but, perhaps, of lesser use? Maybe, but it would
+provide a more solid basis I believe. The perspective is on describing the data
+that is being produced, yes, but the main use case we set out with is to enable
+safe automatic management of tables where data is stored. Maximal values can
+inform processes that manage storage of data types they may choose. And
+backward compatible changes should enable them to safely promote types of
+columns to larger data types. Use cases like managing regular expressions for
+industry specific fields, e.g,. a spec for a vehicle identification number in
+automotive industry, or a spec for a phone number in telecommunications are
+more on a semantic level.
 
 `list_of_scalars_type_def` omits optional constraints because it will be
 further expanded to different types of scalars in order to allow appropriate
@@ -516,8 +532,8 @@ type event struct {
   event_id string !nil
   event_type string allowed(["OrderPlaced", "ContractSigned"])
   payload oneOf [
-    orderPlacedEvent event_type = "OrderPlaced",
-    contractSignedEvent event_type = "ContractSigned"
+    orderPlacedEvent event_type == "OrderPlaced",
+    contractSignedEvent event_type == "ContractSigned"
   ] 
 }
 ```
@@ -569,7 +585,7 @@ create {
 }
 
 update {
-  typeConstraint customer valid_to = nil | valid_from < valid_to
+  typeConstraint customer valid_to == nil | valid_from < valid_to // too expressive?
   nameConstraint customers uniqueKey([id, valid_from])
 
   // similar for contract type and contracts name
@@ -808,6 +824,29 @@ well as JSON schema. Indeed, this document is most closely related to work on da
 contracts, and much of the discussion, also in relation to technologies such as
 Iceberg and Delta Lake would apply to any approach one would take when working with
 data contracts.
+
+## TypeSpec
+
+One small detail here is how in TypeSpec you can use the assignment operator to specify
+a default value. In the eldiem schema language, there is no assigment operator: the
+equals sign is used in constraints as a check for equality. 
+
+How to deal with default values? An optional field with a default value can be
+seen as a required field, actually. Supplying a default value is like saying it is
+required but when it is not found, please use this value. In Databricks, we even
+find the notion of initial value. This is to cover a scenario where we add a required
+column (backward incompatible) with a default value though, and, with an initial value,
+which processors are to apply retrospectively to data in the table that was written
+before the schema change. It feels like we are doing a data migration of sorts, to
+alter data written under previous schema versions, retrospectively.
+In eldiem, I would say, adding a required field is backwards incompatible, default
+value or not. It is also forward incompatible. It will only be accepted if no
+compatibility mode was specified in the logical data model. Do we need a way to
+specify a default value? Perhaps it is a nice gesture? Perhaps even an initial value?
+So that even in a schema with backward compatibility enabled, a change like this would
+be allowed? If so, we could consider (technicality) to not use the equality operator
+to test for equality, but to reserve it for assignment of default values, and use
+`==` instead to test for equality.
 
 ## Discussion
 
