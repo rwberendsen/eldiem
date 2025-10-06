@@ -411,11 +411,11 @@ type contract struct{
   id string(24) 
   customer_id string(24) 
   start_date date 
-  ?end_date date
+  end_date ?date // optional field, can be nil
   b2b bool = false // default value of false
   contract_type string(3) = 'B2B' in(['B2B', 'B2C']) 
-} end_date = nil | end_date > start_date // perhaps allowing arithmetic like this
-                                         // spanning multiple fields is too expressive
+} end_date == nil | end_date > start_date // perhaps allowing arithmetic like this
+                                          // spanning multiple fields is too expressive
 
 type customer struct{
   id string(24) !nil
@@ -882,3 +882,23 @@ this somewhat, SDKs for various programming languages can be developed to, for
 example, deserialize the schema for the latest version of an LDM based on the
 first version and all the modificatoins made to it in later versions.
 
+### A note on schema versions of data
+
+An important distintion in eldiem is made between the schema of data and
+the schema of a data store. To use this distinction effectively, we need a 
+recommendation on how to store the schema version of data that was written
+effectively. Do we need in each and every table definition of an LDM a column
+where we can store metadata like this? What should be its data type? We know
+that normally a table would correspond only to a single LDM. Perhaps then,
+an obligatory `__eldiem__version int` field would do the trick? What about
+data sources that are not under your control, such as when you are extracting
+data over JDBC of a database under some vendor application? Perhaps indeed
+it is of little use to define an LDM for an interface like that, as its schema
+is not under your company its control. Rather, if you decide to integrate
+like that, you may shift the burden to the team doing the integration, and
+before allowing any other team access to extracted data, the integration team
+will have to publish an LDM for it. Surely, in their destination data store
+they will have the option to control the schema of derived tables. Thus, eldiem
+really is a spec you could use in an internal developer platform, and internal
+software engineers are its only audience. That said, we may allow specifying
+data models that do not contain `__eldiem__version int` fields.
